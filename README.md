@@ -22,6 +22,7 @@ It also can be added to your /bin folder, or any binaries folder that you wish a
 
 ## Authors and acknowledgment
 Author - Jorge Garcia Bermejo
+
 Course Instructor - Marcelo Vazquez (s4vitar)
 
 ## License
