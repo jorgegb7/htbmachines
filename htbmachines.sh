@@ -26,24 +26,31 @@ main_url="https://htbmachines.github.io/bundle.js"
 function helpPanel() {
 	echo -e "\n${yellowColor}[+]${endColor}${grayColor} Uso:${endColor}"
 	echo -e "\t${purpleColor}u)${endColor} ${grayColor}Refresh json file with data${endColor}"
+	echo -e "\t${purpleColor}i)${endColor} ${grayColor}Search by IP address${endColor}"
 	echo -e "\t${purpleColor}m)${endColor} ${grayColor}Search machine name${endColor}"
 	echo -e "\t${purpleColor}h)${endColor} ${grayColor}Show help panel${endColor}\n"
 }
 
 function searchMachine() {
-	echo "$1"
+	machineName="$1"
 
-	echo "$machineName"
+	if [ ! -f bundle.js ]; then
+		echo -e "\n${redColor}[!]${endColor} File bundle.js (database) does not exist!"
+		updateFiles
+	fi
+
+	echo -e "\n${yellowColor}[+]${endColor} Listing properties of the machine ${purpleColor}$machineName${endColor}\n"
+
+	# The following oneliner does: cat the bundle file | filter from name: <machineName> until /resuelta:/ | eliminates with grep -v and add more than one value to grep with -E | delete all the matches with '"' | delete all the commas | substitute all the spaces(s/^ ) for nothing(//)
+	cat bundle.js | awk "/name: \"$machineName\"/,/resuelta:/" | grep -vE "id:|sku:|resuelta:" | tr -d '"' | tr -d ',' | sed 's/^ *//'
 }
 
 function updateFiles() {
 	if [ ! -f bundle.js ]; then
-		tput civis
 		echo -e "\n${yellowColor}[+]${endColor} Updating..."
 		curl -s $main_url >bundle.js
 		js-beautify bundle.js | sponge bundle.js
 		echo -e "\n${greenColor}[+]${endColor} Files updated!"
-		tput cnorm
 	else
 		echo -e "${yellowColor}[!]${endColor} File already exists, looking for updates ..."
 		curl -s $main_url >tmpbundle.js
@@ -61,18 +68,33 @@ function updateFiles() {
 	fi
 }
 
+function searchIP() {
+	ipAddress="$1"
+
+	machineName="$(cat bundle.js | grep "ip: \"$ipAddress\"" -B 3 | grep "name: " | awk 'NF{print $NF}' | tr -d '"' | tr -d ',')"
+
+	echo -e "\n${yellowColor}[+]${endColor} The machine for the IP ${grayColor}$ipAddress${endColor} is ${purpleColor}$machineName${endColor}"
+
+	searchMachine "$machineName"
+}
+
 # Indicators
 declare -i parameter_counter=0
 
 # Menu alternatinves:
-
-while getopts "m:uh" arg; do
+# We use the ":" when the flag will take an argument
+# We use the $OPTARG to take the argument that we are passing and assign it to a variable
+while getopts "m:ui:h" arg; do
 	case $arg in
 	m)
 		machineName=$OPTARG
 		let parameter_counter+=1
 		;;
 	u) let parameter_counter+=2 ;;
+	i)
+		ipAddress=$OPTARG
+		let parameter_counter+=3
+		;;
 	h) ;;
 	esac
 done
@@ -81,6 +103,8 @@ if [ $parameter_counter -eq 1 ]; then
 	searchMachine "$machineName"
 elif [ $parameter_counter -eq 2 ]; then
 	updateFiles
+elif [ $parameter_counter -eq 3 ]; then
+	searchIP "$ipAddress"
 else
 	helpPanel
 fi
